@@ -1,0 +1,190 @@
+- name: Hostname and folder
+  hosts: all
+  become: yes
+  gather_facts: true
+  vars:
+    vip_ip: 103.17.140.192
+  tasks:
+    - name: set hostname
+      hostname:
+        name: "{{ hostname }}"
+    - name: Show host ip
+      debug:
+        msg: "{{ ansible_ssh_host }}"
+    - name: Edit max vm ram
+      sysctl:
+        name: vm.max_map_count
+        value: '262144'
+        state: present
+        reload: yes
+
+    - name: Create /root/elastic_kibana_lab directory
+      file:
+        path: /root/elastic_kibana_lab/haproxy
+        state: directory
+        mode: 0755
+    - name: Create keepalived directory
+      file:
+        path: /root/elastic_kibana_lab/keepalived
+        state: directory
+        mode: 0755
+
+    - name: Create haproxy config file
+      template:
+        src: haproxy.cfg.j2
+        dest: /root/elastic_kibana_lab/haproxy/haproxy.cfg
+        mode: 0644
+
+    - name: Copy pem file for haproxy
+      copy: 
+        src: /root/playbooks/haproxy.pem
+        dest: /root/elastic_kibana_lab/haproxy/haproxy.pem
+        owner: root  # Optional: Set the owner of the file
+        mode: 0644  # Optional: Set the permissions of the file
+
+    - name: Copy env file
+      copy: 
+        src: /root/playbooks/.env
+        dest: /root/elastic_kibana_lab/.env
+        mode: 0664  # Optional: Set the permissions of the file
+      
+    - name: Copy check_tcp file
+      copy: 
+        src: /root/playbooks/check_tcp.sh
+        dest: /root/elastic_kibana_lab/keepalived/check_tcp.sh
+        mode: 0777  # Optional: Set the permissions of the file
+
+    - name: Get interface name based on IP address
+      set_fact:
+        interface_name: "{{ ansible_default_ipv4.interface }}"
+      when: ansible_default_ipv4.address == '{{ ansible_ssh_host }}'
+    - name: Print the interface name
+      debug:
+        var: interface_name
+
+    - name: Create keepalived config file
+      template:
+        src: keepalived.conf.j2
+        dest: /root/elastic_kibana_lab/keepalived/keepalived.conf
+        mode: 0644
+
+- name: Create docker compose for master
+  hosts: master
+  become: yes
+  vars:
+    vip_ip: 103.17.140.192
+    kibana_password: vuotnh
+  tasks:
+    - name: Retrieve master nodes
+      set_fact:
+        hostname_nodes: "{{ groups['all'] | map('extract', hostvars, ['ansible_hostname']) | list }}"
+    - name: Create docker compose for master
+      template:
+        src: docker-compose-master.yml.j2
+        dest: /root/elastic_kibana_lab/docker-compose.yml
+        mode: 0644
+
+- name: Create docker compose for backup
+  hosts: backup
+  become: yes
+  vars:
+    vip_ip: 103.17.140.192
+    kibana_password: vuotnh
+  tasks:
+    - name: Retrieve master nodes
+      set_fact:
+        hostname_nodes: "{{ groups['all'] | map('extract', hostvars, ['ansible_hostname']) | list }}"
+    - name: Create docker compose for master
+      template:
+        src: docker-compose-backup.yml.j2
+        dest: /root/elastic_kibana_lab/docker-compose.yml
+        mode: 0644
+
+- name: Start service with docker compose in master
+  hosts: master
+  become: yes
+  vars:
+    vip_ip: 103.17.140.192
+    kibana_password: vuotnh
+    list_docker_packages:
+      - pyopenssl >= 23.2.0
+      - requests==2.31.0 
+      - docker==6.1.3
+      - docker-compose
+  tasks:
+    - name: Install docker python
+      pip:
+        name: "{{ item }}"
+      with_items: "{{ list_docker_packages }}"
+    - name: Start service
+      community.docker.docker_compose:
+        project_src: /root/elastic_kibana_lab
+        build: false
+
+- name: Start service with docker compose in backup
+  hosts: backup
+  become: yes
+  vars:
+    vip_ip: 103.17.140.192
+    kibana_password: vuotnh
+    list_docker_packages:
+      - pyopenssl >= 23.2.0
+      - requests==2.31.0 
+      - docker==6.1.3
+      - docker-compose
+  tasks:
+    - name: Install docker python
+      pip:
+        name: "{{ item }}"
+      with_items: "{{ list_docker_packages }}"
+    
+    - name: Stop service before start
+      community.docker.docker_compose:
+        project_src: /root/elastic_kibana_lab
+        build: false
+        remove_volumes: yes
+        state : absent  # the same running docker-compose down
+
+    - name: Start service
+      community.docker.docker_compose:
+        project_src: /root/elastic_kibana_lab
+        build: false
+        state : present # the same running docker-compose up
+
+- name: Show status container
+  hosts: master
+  become: yes
+  vars:
+    list_docker_packages:
+      - pyopenssl >= 23.2.0
+      - requests==2.31.0 
+      - docker==6.1.3
+      - docker-compose
+  tasks:
+    - name: Install docker python
+      pip:
+        name: "{{ item }}"
+      with_items: "{{ list_docker_packages }}"
+    - name: Get infos on container
+      community.docker.docker_container_info:
+        name: setup_bootstrap
+      register: result
+    - name: Set status of bootstrap container
+      set_fact:
+        bootstrap_status: "{{ result.container['State']['Status'] }}"
+
+- name: Copy ca certificate to backup host
+  hosts: backup
+  become: yes
+  tasks:
+    - name: Get status elastic container
+      community.docker.docker_container_info:
+        name: elastic
+      register: elastic_result
+    - name: Copy file
+      copy:
+        src: /var/lib/docker/volumes/elastic_kibana_lab_certs/_data/
+        dest: /var/lib/docker/volumes/elastic_kibana_lab_certs/_data/
+      delegate_to: "103.17.140.153"
+      when:
+        - elastic_result.container['State']['Status'] == "exited"

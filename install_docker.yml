@@ -1,0 +1,40 @@
+- name: Install docker
+  hosts: test
+  become: yes
+  vars:
+    list_packages:
+      - apt-transport-https
+      - net-tools
+      - ca-certificates
+      - telnet
+      - bridge-utils
+      - ca-certificates
+      - curl
+      - software-properties-common
+      - python3-pip
+
+  tasks:
+    - name: Update all packages
+      apt:
+        update_cache: yes
+    
+    - name: Install requirement package
+      apt:
+        name: "{{ item }}"
+        state: latest
+      with_items: "{{ list_packages }}"
+
+    - name: Add an apt key from url
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository into source list
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
+        state: present 
+  
+    - name: Install docker
+      apt: 
+        name: "docker-ce"
+        state: latest

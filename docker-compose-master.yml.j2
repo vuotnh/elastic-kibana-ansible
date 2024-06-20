@@ -1,0 +1,130 @@
+# master-elastic-docker-compose.yml
+services:
+  setup:
+      image: elasticsearch:8.9.1
+      container_name: setup_bootstrap
+      volumes:
+        - certs:/usr/share/elasticsearch/config/certs
+      user: "0"
+      command: >
+        bash -c '
+          if [ x${ELASTIC_PASSWORD} == x ]; then
+            echo "Set the ELASTIC_PASSWORD environment variable in the .env file";
+            exit 1;
+          elif [ x${KIBANA_PASSWORD} == x ]; then
+            echo "Set the KIBANA_PASSWORD environment variable in the .env file";
+            exit 1;
+          fi;
+          if [ ! -f config/certs/ca.zip ]; then
+            echo "Creating CA";
+            bin/elasticsearch-certutil ca --silent --pem -out config/certs/ca.zip;
+            unzip config/certs/ca.zip -d config/certs;
+          fi;
+          if [ ! -f config/certs/certs.zip ]; then
+            echo "Creating certs";
+            echo -ne \
+            "instances:\n"\
+            {% for host in groups['all'] -%}
+                "  - name: {{ hostvars[host]['ansible_hostname'] }}\n"\
+            "    dns:\n"\
+            "      - {{ hostvars[host]['ansible_hostname'] }}\n"\
+            "      - localhost\n"\
+            "    ip:\n"\
+            "      - {{ hostvars[host]['ansible_default_ipv4']['address'] }}\n"\
+            {% endfor %}
+            > config/certs/instances.yml;
+            bin/elasticsearch-certutil cert --silent --pem -out config/certs/certs.zip --in config/certs/instances.yml --ca-cert config/certs/ca/ca.crt --ca-key config/certs/ca/ca.key;
+            unzip config/certs/certs.zip -d config/certs;
+          fi;
+          echo "Setting file permissions"
+          chown -R root:root config/certs;
+          find . -type d -exec chmod 750 \{\} \;;
+          find . -type f -exec chmod 640 \{\} \;;
+          cat config/certs/ca/ca.key config/certs/ca/ca.crt > config/certs/haproxy.pem
+          echo "All done!";
+        '
+      healthcheck:
+        test: ["CMD-SHELL", "[ -f config/certs/masternode1/masternode1.crt ]"]
+        interval: 1s
+        timeout: 5s
+        retries: 120
+  haproxy:
+    image: haproxy:2.8.7
+    container_name: haproxy
+    volumes:
+      - ./haproxy/haproxy.cfg:/etc/haproxy/haproxy.cfg
+      - ./haproxy/haproxy.pem:/etc/haproxy/haproxy.pem
+    network_mode: "host"
+    restart: always
+    command: haproxy -f /etc/haproxy/haproxy.cfg
+
+  keepalived:
+    image: osixia/keepalived:2.0.20
+    container_name: keepalived
+    cap_add:
+      - NET_ADMIN
+      - NET_BROADCAST
+      - NET_RAW
+    volumes:
+      - ./keepalived/keepalived.conf:/container/service/keepalived/assets/keepalived.conf
+      - ./keepalived/check_tcp.sh:/container/service/keepalived/assets/check_tcp.sh
+    command: [--copy-service]
+    privileged: true
+    network_mode: "host"
+    restart: always
+    depends_on:
+      - haproxy
+
+  elastic:
+    image: elasticsearch:8.9.1
+    container_name: elastic
+    environment:
+      - node.name={{ hostname }}
+      - network.host={{ hostname }}
+      - cluster.initial_master_nodes={{ hostname_nodes | join(',') }}
+      - discovery.seed_hosts={{ hostname_nodes | join(',') }}
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - cluster.name=docker-cluster
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.key=certs/{{ hostname }}/{{ hostname }}.key
+      - xpack.security.http.ssl.certificate=certs/{{ hostname }}/{{ hostname }}.crt
+      - xpack.security.http.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.key=certs/{{ hostname }}/{{ hostname }}.key
+      - xpack.security.transport.ssl.certificate=certs/{{ hostname }}/{{ hostname }}.crt
+      - xpack.security.transport.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.transport.ssl.verification_mode=certificate
+      - xpack.license.self_generated.type=basic
+      - xpack.ml.enabled=false
+    ulimits:
+      nproc: 65535
+      memlock:
+        soft: -1
+        hard: -1
+    network_mode: "host"
+    volumes:
+      - elastic_data:/usr/share/elasticsearch/data
+      - certs:/usr/share/elasticsearch/config/certs
+
+  kibana:
+    container_name: kibana
+    image: kibana:8.9.1
+    environment:
+      - ELASTICSEARCH_HOSTS=[{% for host in groups['all'] %}"https://{{ hostvars[host]['ansible_default_ipv4']['address'] }}:9200"{% if not loop.last %},{% endif %}{% endfor %}]
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD={{ kibana_password }}
+      - ELASTICSEARCH_SSL_VERIFICATIONMODE=none
+      - SERVER_PUBLICBASEURL=https://{{ ansible_ssh_host }}:5601
+      - XPACK_SECURITY_ENABLED=true
+    network_mode: "host"
+    volumes:
+      - certs:/usr/share/kibana/config/certs
+
+volumes:
+  elastic_data:
+    driver: local
+  certs:
+    driver: local

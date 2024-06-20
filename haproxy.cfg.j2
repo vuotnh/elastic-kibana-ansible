@@ -1,0 +1,46 @@
+# haproxy.cfg
+global
+    daemon
+    maxconn 40000
+
+defaults
+    option redispatch
+    retries 3
+    timeout http-request 10s
+    timeout http-keep-alive 10s
+    timeout queue 1m
+    timeout connect 10s
+    timeout client 2m
+    timeout server 2m
+    timeout check 10s
+    balance roundrobin
+    maxconn 10000
+
+listen stats
+   bind 127.0.0.1:1984
+   mode http
+   stats enable
+   stats uri /
+   stats refresh 15s
+   stats realm Haproxy\ Stats
+   stats auth itc:xDta2QVZS88NyTtDVEQ7K77AaPqXCv2g5RbKaOCV
+
+frontend kibana_front
+    bind 0.0.0.0:5602 ssl crt /etc/haproxy/haproxy.pem
+    mode http
+    http-request del-header X-Forwarded-Proto
+    option httplog
+    option forwardfor
+    http-request set-header X-Forwarded-Proto https if { ssl_fc }
+    default_backend kibana_back
+
+# Need to keep stick-table to persistent session between client and kibana node
+# Because they dont share the session with each other
+backend kibana_back
+    mode http
+    timeout tunnel 1h
+    stick-table type ip size 100k expire 30m
+    stick on src
+{% for host in groups['all'] %}
+    server {{ hostvars[host]['ansible_hostname'] }} {{ hostvars[host]['ansible_default_ipv4']['address'] }}:5601 check inter 2000 rise 2 fall 5
+{% endfor %}
