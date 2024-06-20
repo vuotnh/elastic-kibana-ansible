@@ -1,0 +1,19 @@
+[all:vars]
+ansible_connection=ssh
+ansible_ssh_port=22
+ansible_ssh_user=root
+ansible_ssh_pass=Vuot@312
+ansible_become=true
+ansible_become_pass=Vuot@312
+bootstrap_status=""
+
+[master]
+103.17.140.153 hostname=master1
+
+
+[backup]
+103.17.140.97 hostname=master2
+103.17.140.66 hostname=master3
+103.17.140.191 hostname=test
+
+

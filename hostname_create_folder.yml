@@ -106,16 +106,7 @@
   vars:
     vip_ip: 103.17.140.192
     kibana_password: vuotnh
-    list_docker_packages:
-      - pyopenssl >= 23.2.0
-      - requests==2.31.0 
-      - docker==6.1.3
-      - docker-compose
   tasks:
-    - name: Install docker python
-      pip:
-        name: "{{ item }}"
-      with_items: "{{ list_docker_packages }}"
     - name: Start service
       community.docker.docker_compose:
         project_src: /root/elastic_kibana_lab
@@ -127,17 +118,7 @@
   vars:
     vip_ip: 103.17.140.192
     kibana_password: vuotnh
-    list_docker_packages:
-      - pyopenssl >= 23.2.0
-      - requests==2.31.0 
-      - docker==6.1.3
-      - docker-compose
   tasks:
-    - name: Install docker python
-      pip:
-        name: "{{ item }}"
-      with_items: "{{ list_docker_packages }}"
-    
     - name: Stop service before start
       community.docker.docker_compose:
         project_src: /root/elastic_kibana_lab
@@ -154,17 +135,7 @@
 - name: Show status container
   hosts: master
   become: yes
-  vars:
-    list_docker_packages:
-      - pyopenssl >= 23.2.0
-      - requests==2.31.0 
-      - docker==6.1.3
-      - docker-compose
   tasks:
-    - name: Install docker python
-      pip:
-        name: "{{ item }}"
-      with_items: "{{ list_docker_packages }}"
     - name: Get infos on container
       community.docker.docker_container_info:
         name: setup_bootstrap
