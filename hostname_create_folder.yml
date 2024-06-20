@@ -52,7 +52,7 @@
       copy: 
         src: /root/playbooks/check_tcp.sh
         dest: /root/elastic_kibana_lab/keepalived/check_tcp.sh
-        mode: 0777  # Optional: Set the permissions of the file
+        mode: 0645  # Optional: Set the permissions of the file
 
     - name: Get interface name based on IP address
       set_fact:
