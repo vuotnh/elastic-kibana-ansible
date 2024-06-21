@@ -1,0 +1,53 @@
+- name: Create docker compose for master
+  hosts: master
+  become: yes
+  tasks:
+    - name: Get status elastic container
+      community.docker.docker_container_info:
+        name: setup_bootstrap
+      register: container_status
+      until: container_status.container['State']['Status'] == "exited"
+      retries: 10
+      delay: 10
+    - name: Copy file
+      copy:
+        src: /var/lib/docker/volumes/elastic_kibana_lab_certs/_data/
+        dest: /root/ca_files/
+
+- name: Copy files to backup
+  hosts: backup
+  become: yes
+  vars:
+    containers_need_restart:
+      - elastic
+  tasks:      
+    - name: Copy file to backup
+      copy:
+        src: /root/ca_files/
+        dest: /var/lib/docker/volumes/elastic_kibana_lab_certs/_data/
+
+    - name: Restart container
+      community.docker.docker_container:
+        name: "{{ item }}"
+        restart: true
+      with_items: "{{ containers_need_restart }}"
+
+- name: Change password for kibana_system_user
+  hosts: all
+  become: yes
+  tasks:
+    - name: Change password
+      uri:
+        url: https://{{ ansible_ssh_host }}:9200/_security/user/kibana_system/_password
+        method: POST
+        validate_certs: no
+        body_format: json
+        body:
+          password: "vuotnh"
+        headers:
+          Content-Type: "application/json"
+        user: "elastic"
+        password: "vuotnh"
+        force_basic_auth: no
+        client_cert: /var/lib/docker/volumes/elastic_kibana_lab_certs/_data//ca/ca.crt
+        client_key: /var/lib/docker/volumes/elastic_kibana_lab_certs/_data//ca/ca.key
