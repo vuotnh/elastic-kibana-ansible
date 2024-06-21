@@ -1,5 +1,6 @@
 # How to run script
 
+* Clone project to ***/root*** folder
 * First, change ip in segment master and backup of inventory hosts file
 * Install ansible in deployment node
 * Run playbook ***install_docker.yml*** to install requirement package

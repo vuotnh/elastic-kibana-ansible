@@ -37,20 +37,20 @@
 
     - name: Copy pem file for haproxy
       copy: 
-        src: /root/playbooks/haproxy.pem
+        src: /root/elastic-kibana-ansible/haproxy.pem
         dest: /root/elastic_kibana_lab/haproxy/haproxy.pem
         owner: root  # Optional: Set the owner of the file
         mode: 0644  # Optional: Set the permissions of the file
 
     - name: Copy env file
       copy: 
-        src: /root/playbooks/.env
+        src: /root/elastic-kibana-ansible/.env
         dest: /root/elastic_kibana_lab/.env
         mode: 0664  # Optional: Set the permissions of the file
       
     - name: Copy check_tcp file
       copy: 
-        src: /root/playbooks/check_tcp.sh
+        src: /root/elastic-kibana-ansible/check_tcp.sh
         dest: /root/elastic_kibana_lab/keepalived/check_tcp.sh
         mode: 0645  # Optional: Set the permissions of the file
 
@@ -132,30 +132,3 @@
         build: false
         state : present # the same running docker-compose up
 
-- name: Show status container
-  hosts: master
-  become: yes
-  tasks:
-    - name: Get infos on container
-      community.docker.docker_container_info:
-        name: setup_bootstrap
-      register: result
-    - name: Set status of bootstrap container
-      set_fact:
-        bootstrap_status: "{{ result.container['State']['Status'] }}"
-
-- name: Copy ca certificate to backup host
-  hosts: backup
-  become: yes
-  tasks:
-    - name: Get status elastic container
-      community.docker.docker_container_info:
-        name: elastic
-      register: elastic_result
-    - name: Copy file
-      copy:
-        src: /var/lib/docker/volumes/elastic_kibana_lab_certs/_data/
-        dest: /var/lib/docker/volumes/elastic_kibana_lab_certs/_data/
-      delegate_to: "103.17.140.153"
-      when:
-        - elastic_result.container['State']['Status'] == "exited"
