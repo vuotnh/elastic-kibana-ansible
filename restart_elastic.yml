@@ -26,13 +26,13 @@
         src: /root/ca_files/
         dest: /var/lib/docker/volumes/elastic_kibana_lab_certs/_data/
 
-    - name: Restart container
+    - name: Restart container elastic
       community.docker.docker_container:
         name: "{{ item }}"
         restart: true
       with_items: "{{ containers_need_restart }}"
 
-- name: Change password for kibana_system_user
+- name: Change password for kibana_system user
   hosts: all
   become: yes
   tasks:
@@ -53,7 +53,7 @@
         debug:
           var: curl_output.content
 
-    - name: Change password
+    - name: Change password kibana_system
       uri:
         url: https://{{ ansible_ssh_host }}:9200/_security/user/kibana_system/_password
         method: POST
@@ -68,3 +68,8 @@
         force_basic_auth: no
         client_cert: /var/lib/docker/volumes/elastic_kibana_lab_certs/_data/ca/ca.crt
         client_key: /var/lib/docker/volumes/elastic_kibana_lab_certs/_data/ca/ca.key
+
+    - name: Restart container Kibana
+      community.docker.docker_container:
+        name: "kibana"
+        restart: true
