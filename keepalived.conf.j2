@@ -16,7 +16,7 @@ vrrp_instance keepalived_vip {
     priority 100
 {% elif groups['backup'] is defined and ansible_default_ipv4.address in groups['backup'] %}
     state BACKUP
-    priority {{ 100 - groups['backup'].index(ansible_default_ipv4.address) }}  # Decreasing priority for backups
+    priority {{ 99 - groups['backup'].index(ansible_default_ipv4.address) }}  # Decreasing priority for backups
 {% else %}
     state {{ state | default('BACKUP') }}  # Default to BACKUP if not in any group
     priority 1  # Default priority for other hosts
