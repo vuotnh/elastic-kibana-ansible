@@ -36,6 +36,23 @@
   hosts: all
   become: yes
   tasks:
+    - name: Wait for cURL response
+      uri:
+        url: "https://{{ ansible_ssh_host }}:9200/"
+        method: GET
+        validate_certs: no
+        user: "elastic"
+        password: "vuotnh"
+        return_content: yes
+      register: curl_output
+      until: curl_output.status == 200
+      retries: 10
+      delay: 5
+
+    - name: Display cURL response
+        debug:
+          var: curl_output.content
+
     - name: Change password
       uri:
         url: https://{{ ansible_ssh_host }}:9200/_security/user/kibana_system/_password
@@ -49,5 +66,5 @@
         user: "elastic"
         password: "vuotnh"
         force_basic_auth: no
-        client_cert: /var/lib/docker/volumes/elastic_kibana_lab_certs/_data//ca/ca.crt
-        client_key: /var/lib/docker/volumes/elastic_kibana_lab_certs/_data//ca/ca.key
+        client_cert: /var/lib/docker/volumes/elastic_kibana_lab_certs/_data/ca/ca.crt
+        client_key: /var/lib/docker/volumes/elastic_kibana_lab_certs/_data/ca/ca.key
