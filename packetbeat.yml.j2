@@ -1,0 +1,25 @@
+packetbeat.interfaces.device: ens3
+packetbeat.interfaces.type: af_packet
+packetbeat.interfaces.buffer_size_mb: 4000
+setup.template.name: "customname"
+setup.template.pattern: "customname*"
+setup.template.settings:
+  index.number_of_shards: 1
+  index.number_of_replicas: 1
+
+queue.mem:
+  events: 128000
+  flush.min_events: 512
+  flush.timeout: 5s
+
+packetbeat.protocols.dns:
+  ports: [53]
+  include_authorities: true
+  include_additionals: true
+
+output.elasticsearch:
+  hosts: [{% for host in groups['elastic'] %}"https://{{ hostvars[host]['ansible_default_ipv4']['address'] }}:9200"{% if not loop.last %},{% endif %}{% endfor %}]
+  username: "elastic"
+  password: "vuotnh"
+  index: "customname-%{[agent.version]}-%{+yyyy.MM.dd}"
+  ssl.verification_mode: none

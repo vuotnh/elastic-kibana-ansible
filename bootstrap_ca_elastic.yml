@@ -1,0 +1,48 @@
+- name: Create docker compose for elastic_master
+  hosts: elastic_master
+  become: yes
+  gather_facts: true
+  tasks:
+
+    - name: Create /root/elastic_kibana_lab directory
+      file:
+        path: /root/elastic_kibana_lab/bootstrap
+        state: directory
+        mode: 0755
+        
+    - name: Create docker compose for bootstrap
+      template:
+        src: docker-compose-bootstrap-elastic.yml.j2
+        dest: /root/elastic_kibana_lab/bootstrap/docker-compose.yml
+        mode: 0644
+
+    - name: Copy env file
+      copy: 
+        src: /root/elastic-kibana-ansible/.env
+        dest: /root/elastic_kibana_lab/bootstrap/.env
+        mode: 0664  # Optional: Set the permissions of the file
+
+    - name: Stop service before start
+      community.docker.docker_compose:
+        project_src: /root/elastic_kibana_lab/bootstrap
+        build: false
+        remove_volumes: yes
+        state : absent  # the same running docker-compose down
+
+    - name: Start service
+      community.docker.docker_compose:
+        project_src: /root/elastic_kibana_lab/bootstrap
+        build: false
+        state : present # the same running docker-compose up
+
+    - name: Get status elastic container
+      community.docker.docker_container_info:
+        name: setup_bootstrap
+      register: container_status
+      until: container_status.container['State']['Status'] == "exited"
+      retries: 10
+      delay: 10
+    - name: Copy file
+      copy:
+        src: /var/lib/docker/volumes/bootstrap_certs/_data/
+        dest: /root/ca_files/

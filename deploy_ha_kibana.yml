@@ -1,23 +1,8 @@
-- name: Hostname and folder
-  hosts: all
+- name: Deploy ha_kibana
+  hosts: kibana
   become: yes
   gather_facts: true
-  vars:
-    vip_ip: 103.17.140.192
   tasks:
-    - name: set hostname
-      hostname:
-        name: "{{ hostname }}"
-    - name: Show host ip
-      debug:
-        msg: "{{ ansible_ssh_host }}"
-    - name: Edit max vm ram
-      sysctl:
-        name: vm.max_map_count
-        value: '262144'
-        state: present
-        reload: yes
-
     - name: Create /root/elastic_kibana_lab directory
       file:
         path: /root/elastic_kibana_lab/haproxy
@@ -68,56 +53,10 @@
         dest: /root/elastic_kibana_lab/keepalived/keepalived.conf
         mode: 0644
 
-- name: Create docker compose for master
-  hosts: master
-  become: yes
-  vars:
-    vip_ip: 103.17.140.192
-    kibana_password: vuotnh
-  tasks:
-    - name: Retrieve master nodes
-      set_fact:
-        hostname_nodes: "{{ groups['all'] | map('extract', hostvars, ['ansible_hostname']) | list }}"
-    - name: Create docker compose for master
-      template:
-        src: docker-compose-master.yml.j2
-        dest: /root/elastic_kibana_lab/docker-compose.yml
-        mode: 0644
 
-- name: Create docker compose for backup
-  hosts: backup
+- name: Start service ha_kibana
+  hosts: kibana
   become: yes
-  vars:
-    vip_ip: 103.17.140.192
-    kibana_password: vuotnh
-  tasks:
-    - name: Retrieve master nodes
-      set_fact:
-        hostname_nodes: "{{ groups['all'] | map('extract', hostvars, ['ansible_hostname']) | list }}"
-    - name: Create docker compose for master
-      template:
-        src: docker-compose-backup.yml.j2
-        dest: /root/elastic_kibana_lab/docker-compose.yml
-        mode: 0644
-
-- name: Start service with docker compose in master
-  hosts: master
-  become: yes
-  vars:
-    vip_ip: 103.17.140.192
-    kibana_password: vuotnh
-  tasks:
-    - name: Start service
-      community.docker.docker_compose:
-        project_src: /root/elastic_kibana_lab
-        build: false
-
-- name: Start service with docker compose in backup
-  hosts: backup
-  become: yes
-  vars:
-    vip_ip: 103.17.140.192
-    kibana_password: vuotnh
   tasks:
     - name: Stop service before start
       community.docker.docker_compose:

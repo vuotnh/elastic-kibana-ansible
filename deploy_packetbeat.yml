@@ -1,0 +1,27 @@
+- name: Deploy packetbeat
+  hosts: packetbeat
+  become: yes
+  gather_facts: false
+  tasks:
+    - name: Copy file docker compose to hosts
+      copy:
+        src: /root/elastic-kibana-ansible/docker-compose-kibana.yml
+        dest: /root/elastic_kibana_lab/docker-compose.yml
+
+- name: Start service packetbeat
+  hosts: packetbeat
+  become: yes
+  gather_facts: false
+  tasks:
+    - name: Stop service before start
+      community.docker.docker_compose:
+        project_src: /root/elastic_kibana_lab
+        build: false
+        remove_volumes: yes
+        state : absent  # the same running docker-compose down
+
+    - name: Start service
+      community.docker.docker_compose:
+        project_src: /root/elastic_kibana_lab
+        build: false
+        state : present # the same running docker-compose up

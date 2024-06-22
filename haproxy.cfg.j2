@@ -41,6 +41,6 @@ backend kibana_back
     timeout tunnel 1h
     stick-table type ip size 100k expire 30m
     stick on src
-{% for host in groups['all'] %}
+{% for host in groups['kibana'] %}
     server {{ hostvars[host]['ansible_hostname'] }} {{ hostvars[host]['ansible_default_ipv4']['address'] }}:5601 check inter 2000 rise 2 fall 5
 {% endfor %}

@@ -1,0 +1,22 @@
+- name: Hostname and folder
+  hosts: all
+  become: yes
+  gather_facts: true
+  tasks:
+    - name: set hostname
+      hostname:
+        name: "{{ hostname }}"
+    - name: Show host ip
+      debug:
+        msg: "{{ ansible_ssh_host }}"
+    - name: Edit max vm ram
+      sysctl:
+        name: vm.max_map_count
+        value: '262144'
+        state: present
+        reload: yes
+    - name: Create /root/elastic_kibana_lab directory
+      file:
+        path: /root/elastic_kibana_lab/haproxy
+        state: directory
+        mode: 0755

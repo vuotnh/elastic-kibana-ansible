@@ -2,16 +2,25 @@
 ansible_connection=ssh
 ansible_ssh_port=22
 ansible_ssh_user=root
-ansible_ssh_pass=Vuot@312
+ansible_ssh_pass=vuot@312
 ansible_become=true
-ansible_become_pass=Vuot@312
+ansible_become_pass=vuot@312
+vip_ip=103.17.140.192
+kibana_password=vuotnh
 
-[master]
-103.17.140.153 hostname=masternode1
+[elastic_master]
+103.17.140.108 hostname=masternode1
+
+[elastic_backup]
+103.17.140.59 hostname=masternode2
 
 
-[backup]
-103.17.140.97 hostname=masternode2
-103.17.140.66 hostname=masternode3
+[elastic:children]
+elastic_master
+elastic_backup
 
+[kibana]
+103.17.140.22 hostname=masternode3
+103.17.140.54 hostname=masternode4
 
+[packetbeat]
