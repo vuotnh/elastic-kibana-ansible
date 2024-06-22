@@ -76,6 +76,8 @@
       delay: 5
 
     - name: Change password kibana_system
+      environment:
+        SSL_CERT_FILE: "/var/lib/docker/volumes/elastic_kibana_lab_certs/_data/ca/ca.crt"
       uri:
         url: https://{{ ansible_ssh_host }}:9200/_security/user/kibana_system/_password
         method: POST
@@ -87,6 +89,6 @@
           Content-Type: "application/json"
         user: "elastic"
         password: "vuotnh"
-        force_basic_auth: no
+        force_basic_auth: yes
         client_cert: /var/lib/docker/volumes/elastic_kibana_lab_certs/_data/ca/ca.crt
         client_key: /var/lib/docker/volumes/elastic_kibana_lab_certs/_data/ca/ca.key

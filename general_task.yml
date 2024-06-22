@@ -20,3 +20,16 @@
         path: /root/elastic_kibana_lab/haproxy
         state: directory
         mode: 0755
+
+    - name: Read current /etc/hosts file
+      shell: cat /etc/hosts
+      register: current_hosts
+      changed_when: false
+
+    - name: Update /etc/hosts file
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ item }} {{ hostvars[item]['ansible_hostname'] }}"
+        insertafter: EOF
+      loop: "{{ groups['all'] }}"
+      when: "item not in current_hosts.stdout_lines"

@@ -24,4 +24,4 @@ elastic-backup
 103.17.140.54 hostname=masternode4
 
 [packetbeat]
-103.17.140.59 hostname=masternode2
+103.17.140.153 hostname=masternode5
