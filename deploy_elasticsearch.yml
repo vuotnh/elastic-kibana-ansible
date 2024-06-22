@@ -6,6 +6,12 @@
     - name: Get list elasticsearch node
       set_fact:
         hostname_nodes: "{{ groups['elastic'] | map('extract', hostvars, ['ansible_hostname']) | list }}"
+
+    - name: Copy env file
+      copy: 
+        src: /root/elastic-kibana-ansible/.env
+        dest: /root/elastic_kibana_lab/.env
+        mode: 0664  # Optional: Set the permissions of the file
     - name: Create docker compose for master
       template:
         src: docker-compose-elastic.yml.j2
@@ -41,8 +47,6 @@
         src: /root/ca_files/
         dest: /var/lib/docker/volumes/elastic_kibana_lab_certs/_data/
 
-    
-
 - name: Change password for kibana_system user
   hosts: elastic
   become: yes
@@ -57,13 +61,15 @@
       with_items: "{{ containers_need_restart }}"
 
     - name: Wait for cURL response
+      environment:
+        SSL_CERT_FILE: "/var/lib/docker/volumes/elastic_kibana_lab_certs/_data/ca/ca.crt"
       uri:
         url: "https://{{ ansible_ssh_host }}:9200/"
         method: GET
         validate_certs: no
         user: "elastic"
         password: "vuotnh"
-        return_content: yes
+        force_basic_auth: yes
       register: curl_output
       until: curl_output.status == 200
       retries: 10

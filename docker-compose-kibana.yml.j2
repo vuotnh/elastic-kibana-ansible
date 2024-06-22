@@ -31,7 +31,7 @@ services:
     container_name: kibana
     image: kibana:8.9.1
     environment:
-      - ELASTICSEARCH_HOSTS=[{% for host in groups['all'] %}"https://{{ hostvars[host]['ansible_default_ipv4']['address'] }}:9200"{% if not loop.last %},{% endif %}{% endfor %}]
+      - ELASTICSEARCH_HOSTS=[{% for host in groups['elastic'] %}"https://{{ hostvars[host]['inventory_hostname'] }}:9200"{% if not loop.last %},{% endif %}{% endfor %}]
       - ELASTICSEARCH_USERNAME=kibana_system
       - ELASTICSEARCH_PASSWORD={{ kibana_password }}
       - ELASTICSEARCH_SSL_VERIFICATIONMODE=none

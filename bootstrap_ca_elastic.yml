@@ -1,9 +1,8 @@
 - name: Create docker compose for elastic_master
-  hosts: elastic_master
+  hosts: elastic-master
   become: yes
   gather_facts: true
   tasks:
-
     - name: Create /root/elastic_kibana_lab directory
       file:
         path: /root/elastic_kibana_lab/bootstrap
@@ -35,14 +34,17 @@
         build: false
         state : present # the same running docker-compose up
 
-    - name: Get status elastic container
+    - name: Get status bootstrap container
       community.docker.docker_container_info:
         name: setup_bootstrap
       register: container_status
       until: container_status.container['State']['Status'] == "exited"
       retries: 10
       delay: 10
+
     - name: Copy file
-      copy:
+      synchronize:
         src: /var/lib/docker/volumes/bootstrap_certs/_data/
-        dest: /root/ca_files/
+        dest: /root/ca_files
+        mode: pull
+    

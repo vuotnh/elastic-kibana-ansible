@@ -3,9 +3,20 @@
   become: yes
   gather_facts: false
   tasks:
+    - name: Create packetbeat directory
+      file:
+        path: /root/elastic_kibana_lab/packetbeat
+        state: directory
+        mode: 0755
+    - name: Create packetbeat config file
+      template:
+        src: packetbeat.yml.j2
+        dest: /root/elastic_kibana_lab/packetbeat/packetbeat.yml
+        mode: 0644
+
     - name: Copy file docker compose to hosts
       copy:
-        src: /root/elastic-kibana-ansible/docker-compose-kibana.yml
+        src: /root/elastic-kibana-ansible/docker-compose-packetbeat.yml
         dest: /root/elastic_kibana_lab/docker-compose.yml
 
 - name: Start service packetbeat
@@ -25,3 +36,13 @@
         project_src: /root/elastic_kibana_lab
         build: false
         state : present # the same running docker-compose up
+
+- name: Copy files to elastic
+  hosts: all
+  become: yes
+  gather_facts: false
+  tasks:      
+    - name: Copy file cert to all hosts
+      copy:
+        src: /root/ca_files/
+        dest: /var/lib/docker/volumes/elastic_kibana_lab_certs/_data/

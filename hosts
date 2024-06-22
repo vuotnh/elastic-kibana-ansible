@@ -8,19 +8,20 @@ ansible_become_pass=vuot@312
 vip_ip=103.17.140.192
 kibana_password=vuotnh
 
-[elastic_master]
+[elastic-master]
 103.17.140.108 hostname=masternode1
 
-[elastic_backup]
+[elastic-backup]
 103.17.140.59 hostname=masternode2
 
 
 [elastic:children]
-elastic_master
-elastic_backup
+elastic-master
+elastic-backup
 
 [kibana]
 103.17.140.22 hostname=masternode3
 103.17.140.54 hostname=masternode4
 
 [packetbeat]
+103.17.140.59 hostname=masternode2

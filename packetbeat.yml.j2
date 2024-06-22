@@ -18,7 +18,7 @@ packetbeat.protocols.dns:
   include_additionals: true
 
 output.elasticsearch:
-  hosts: [{% for host in groups['elastic'] %}"https://{{ hostvars[host]['ansible_default_ipv4']['address'] }}:9200"{% if not loop.last %},{% endif %}{% endfor %}]
+  hosts: [{% for host in groups['elastic'] %}"https://{{ hostvars[host]['inventory_hostname'] }}:9200"{% if not loop.last %},{% endif %}{% endfor %}]
   username: "elastic"
   password: "vuotnh"
   index: "customname-%{[agent.version]}-%{+yyyy.MM.dd}"

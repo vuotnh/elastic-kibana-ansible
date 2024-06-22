@@ -53,6 +53,12 @@
         dest: /root/elastic_kibana_lab/keepalived/keepalived.conf
         mode: 0644
 
+    - name: Create docker compose for kibana
+      template:
+        src: docker-compose-kibana.yml.j2
+        dest: /root/elastic_kibana_lab/docker-compose.yml
+        mode: 0644
+
 
 - name: Start service ha_kibana
   hosts: kibana
